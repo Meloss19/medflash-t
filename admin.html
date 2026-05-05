@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Medflash</title>
+    <!-- Librería de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Mismo estilo base que tu página de activación */
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+
+        p.subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        /* Caja donde aparece el ticket generado */
+        .ticket-display {
+            background-color: #f8f9fa;
+            border: 2px dashed #e1e1e1;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        #ticketCode {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+            letter-spacing: 1px;
+        }
+
+        /* Botones con el mismo estilo de tu CSS anterior */
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.1s active;
+            margin-top: 10px;
+        }
+
+        .btn-generate {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-generate:hover { background-color: #0056b3; }
+
+        .btn-copy {
+            background-color: #6c757d;
+            color: white;
+            display: none; /* Se oculta hasta que haya un ticket */
+        }
+
+        .btn-copy:hover { background-color: #495057; }
+
+        button:active { transform: scale(0.98); }
+
+        /* Estados de mensaje */
+        #status {
+            margin-top: 15px;
+            font-size: 13px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success-msg { display: block !important; color: #1e5e1e; background: #defadb; border: 1px solid #bcdea9; }
+        .error-msg { display: block !important; color: #c81e1e; background: #fde8e8; border: 1px solid #f8b4b4; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Generador</h2>
+        <p class="subtitle">Panel privado para crear licencias</p>
+        
+        <div class="ticket-display">
+            <span id="ticketCode">---</span>
+        </div>
+
+        <button class="btn-generate" id="getTicketBtn" onclick="generarNuevoTicket()">Generar Nuevo Ticket</button>
+        <button class="btn-copy" id="btnCopiar" onclick="copiarTicket()">Copiar Código</button>
+        
+        <p id="status"></p>
+    </div>
+
+    <script>
+        // Reutilizamos tus credenciales
+        const SUPABASE_URL = 'https://kkigelniqntyadfidmdd.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtraWdlbG5pcW50eWFkZmlkbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4ODgwOTQsImV4cCI6MjA5MzQ2NDA5NH0.dvZ2c9Y2CvLnV0g6kTqC5dGVpsTYotU9JyhHBZwKG3g'; 
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function generarNuevoTicket() {
+            const ticketLabel = document.getElementById('ticketCode');
+            const statusLabel = document.getElementById('status');
+            const btnCopy = document.getElementById('btnCopiar');
+            const btnGen = document.getElementById('getTicketBtn');
+
+            // Reset de estados
+            ticketLabel.innerText = "GENERANDO...";
+            statusLabel.className = "";
+            statusLabel.innerText = "";
+            btnGen.disabled = true;
+
+            try {
+                // Llamamos a la función RPC que genera el ticket en la DB
+                const { data, error } = await supabaseClient.rpc('admin_crear_ticket_nuevo');
+
+                if (error) throw error;
+
+                ticketLabel.innerText = data;
+                btnCopy.style.display = "block"; // Mostramos el botón de copiar
+                statusLabel.className = "success-msg";
+                statusLabel.innerText = "Licencia creada y guardada en DB";
+
+            } catch (err) {
+                console.error(err);
+                ticketLabel.innerText = "ERROR";
+                statusLabel.className = "error-msg";
+                statusLabel.innerText = "Error al conectar con Supabase";
+            } finally {
+                btnGen.disabled = false;
+            }
+        }
+
+        function copiarTicket() {
+            const texto = document.getElementById('ticketCode').innerText;
+            const statusLabel = document.getElementById('status');
+            
+            if (texto !== "---" && texto !== "GENERANDO..." && texto !== "ERROR") {
+                navigator.clipboard.writeText(texto);
+                
+                const originalMsg = statusLabel.innerText;
+                const originalClass = statusLabel.className;
+                
+                statusLabel.className = "success-msg";
+                statusLabel.innerText = "¡Copiado al portapapeles!";
+                
+                setTimeout(() => {
+                    statusLabel.innerText = originalMsg;
+                    statusLabel.className = originalClass;
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>
