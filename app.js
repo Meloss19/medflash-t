@@ -1,48 +1,38 @@
-const getTicketBtn = document.getElementById('getTicketBtn');
-const ticketDisplay = document.getElementById('ticketCode');
-
-getTicketBtn.addEventListener('click', async () => {
-    ticketDisplay.innerText = "Generando nuevo ticket...";
-
-    // Llamamos a la función RPC que creamos en Supabase
-    const { data, error } = await supabase.rpc('admin_crear_ticket_nuevo');
-
-    if (error) {
-        console.error("Error creando ticket:", error);
-        ticketDisplay.innerText = "Error al generar";
-        
-        // Tip: Si te da error 403, revisa los permisos de RLS o la definición SECURITY DEFINER
-    } else {
-        // 'data' contendrá directamente el string del ticket (ej: ABCD-1234-EFGH)
-        ticketDisplay.innerText = data;
-        console.log("Nuevo ticket creado con éxito:", data);
-    }
-});
+// 1. Una sola declaración de constantes
 const getTicketBtn = document.getElementById('getTicketBtn');
 const ticketDisplay = document.getElementById('ticketCode');
 const statusMessage = document.getElementById('statusMessage');
 
+// 2. Un solo evento de escucha
 getTicketBtn.addEventListener('click', async () => {
     ticketDisplay.innerText = "GENERANDO...";
     statusMessage.innerText = "";
+    getTicketBtn.disabled = true; // Evita clics dobles
 
-    const { data, error } = await supabase.rpc('admin_crear_ticket_nuevo');
+    try {
+        const { data, error } = await supabase.rpc('admin_crear_ticket_nuevo');
 
-    if (error) {
-        console.error("Error:", error);
-        ticketDisplay.innerText = "ERROR";
-        statusMessage.style.color = "red";
-        statusMessage.innerText = "No se pudo conectar con la base de datos";
-    } else {
-        ticketDisplay.innerText = data;
-        statusMessage.style.color = "#28a745";
-        statusMessage.innerText = "¡Ticket creado exitosamente!";
+        if (error) {
+            console.error("Error detallado:", error);
+            ticketDisplay.innerText = "ERROR";
+            statusMessage.style.color = "red";
+            statusMessage.innerText = "Error: " + (error.message || "Consulta la consola");
+        } else {
+            ticketDisplay.innerText = data;
+            statusMessage.style.color = "#28a745";
+            statusMessage.innerText = "¡Ticket creado exitosamente!";
+        }
+    } catch (err) {
+        console.error("Error inesperado:", err);
+    } finally {
+        getTicketBtn.disabled = false;
     }
 });
 
+// 3. Función de copiado
 const copiarTicket = () => {
     const texto = ticketDisplay.innerText;
-    if (texto.includes('-')) {
+    if (texto && texto.includes('-')) {
         navigator.clipboard.writeText(texto);
         const originalText = statusMessage.innerText;
         statusMessage.innerText = "¡Copiado al portapapeles!";
